@@ -21,3 +21,22 @@ Only one mod can use Serpentine at a time (1.7.0)
 Integer expects in the Config Screen is only set up to be a slider from 0 - 100, this is quite limiting
 
 but I am rn working on it
+
+
+# Installation Guide
+
+## Normal users
+
+click on the github releases and download the version that you need!
+
+## Developers
+
+1. download the most recent jar file in the release page
+2. in your build.gradle file, add this line to your dependencies block:
+
+    ``modImplementation files('libs/serpentine.jar')``
+
+3. drag the jar file into a folder called libs in your project root
+4. you may need to run ./gradlew --refresh-dependencies for your IDE to update to the change but after that, it's installed!
+
+* only reason it is this way is because I can't be bothered to upload to maven, soon I'll add it to modrinth where this guide will be updated
