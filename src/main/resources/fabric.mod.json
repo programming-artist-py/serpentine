@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "serpentine",
+	"version": "${version}",
+	"name": "serpentine",
+	"description": "lightweight config mod, used by some of my other projects",
+	"authors": [
+		"penguinguy0944"
+	],
+	"contact": {
+		"homepage": "https://github.com/programming-artist-py/the-felix-mod",
+		"sources": "https://github.com/programming-artist-py/the-felix-mod"
+	},
+	"license": "MIT",
+	"icon": "assets/serpentine/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"penguin.serpentine.Serpentine"
+		],
+		"client": [
+			"penguin.serpentine.SerpentineClient"
+		]
+	},
+	"mixins": [
+		"serpentine.mixins.json",
+		{
+			"config": "serpentine.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.17.3",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+	}
+}

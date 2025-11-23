@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "penguin.serpentine.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"ExampleMixin",
+		"client.ConfigItemHeight"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
