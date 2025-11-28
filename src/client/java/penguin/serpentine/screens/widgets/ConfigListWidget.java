@@ -15,6 +15,9 @@ import net.minecraft.client.gui.widget.EntryListWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
+import penguin.serpentine.core.Config;
+import penguin.serpentine.core.Config.SyncSide;
+import penguin.serpentine.network.ConfigNetworkingClient;
 import penguin.serpentine.screens.ConfigScreen;
 
 public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEntry> {
@@ -48,12 +51,15 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
         private TextFieldWidget textField;
 
         private final TextRenderer tr;
+        boolean editable;
+        private final SyncSide side;
 
-        public ConfigEntry(ConfigScreen parent, String key, Object value, TextRenderer tr) {
+        public ConfigEntry(ConfigScreen parent, String key, Object value, Config config, TextRenderer tr) {
             this.parent = parent;
             this.key = key;
             this.value = value;
             this.tr = tr;
+            this.side = config.getSyncSide(key);
         }
 
         @Override
@@ -63,9 +69,17 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
             int widgetX = x + 80;
             int labelY = y + (32 - tr.fontHeight) / 2;
 
+            boolean readOnly;
+            if (side == SyncSide.CLIENT_ONLY) {
+                readOnly = false;
+            } else if (side == SyncSide.SERVER_ONLY) {
+                readOnly = !MinecraftClient.getInstance().isInSingleplayer() && !ConfigNetworkingClient.isOp; 
+            } else { // SYNCED
+                readOnly = true;
+            }
+
             // draw label
             ctx.drawText(tr, Text.literal(key), x - 100, labelY, 0xFFFFFF, false);
-
             if (value instanceof Boolean b) {
                 if (trueBtn == null) {
                     trueBtn = ButtonWidget.builder(Text.literal("True"), btn -> {
@@ -83,6 +97,9 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
 
                 trueBtn.setY(y + 2);
                 falseBtn.setY(y + 2);
+
+                trueBtn.active = !readOnly;
+                falseBtn.active = !readOnly;
 
                 trueBtn.render(ctx, mouseX, mouseY, delta);
                 falseBtn.render(ctx, mouseX, mouseY, delta);
@@ -109,6 +126,8 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
                 }
 
                 slider.setY(y + 2);
+
+                slider.active = !readOnly;
                 slider.render(ctx, mouseX, mouseY, delta);
             } else if (value instanceof Float) {
 
@@ -121,8 +140,15 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
                 }
 
                 textField.setY(y + 2);
+                textField.active = !readOnly;
+
                 textField.render(ctx, mouseX, mouseY, delta);
-                ctx.drawCenteredTextWithShadow(tr, Text.literal("F"), textField.getRight() - 10, labelY - 3, 0xFFFFFF);
+                if (textField.active) {
+                    ctx.drawCenteredTextWithShadow(tr, Text.literal("F"), textField.getRight() - 10, labelY - 3, 0xFFFFFF);
+                } else {
+                    ctx.drawCenteredTextWithShadow(tr, Text.literal("F"), textField.getRight() - 10, labelY - 3, 0xA1A1A1);
+                }
+
             } else {
 
                 if (textField == null) {
@@ -134,6 +160,7 @@ public class ConfigListWidget extends EntryListWidget<ConfigListWidget.ConfigEnt
                 }
 
                 textField.setY(y + 2);
+                textField.active = !readOnly;
                 textField.render(ctx, mouseX, mouseY, delta);
             }
         }

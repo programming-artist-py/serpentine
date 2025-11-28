@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
+
 /**
  * Registry + loader for configs.
  * Keep it simple: static registry for the library.
@@ -25,17 +28,29 @@ public final class Serpentine {
     }
 
     public static void register(Config cfg) {
+        boolean isServer = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
         if (configDir == null) {
-            // fallback: use working dir /config if not initialized by platform loader
+            // fallback: use working dir /config if not initialized
             init(Paths.get("config"));
         }
-        if (registry.containsKey(cfg.getModId())) throw new IllegalStateException("Already registered: " + cfg.getModId());
-        cfg.bindPath(configDir);
+        if (registry.containsKey(cfg.getModId())) 
+            throw new IllegalStateException("Already registered: " + cfg.getModId());
+
+        // bind path depending on client/server
+        Path targetDir = configDir;
+        try {
+            Files.createDirectories(targetDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create config dir: " + targetDir, e);
+        }
+
+        cfg.bindPath(targetDir, isServer);
         try {
             loadConfig(cfg);
         } catch (IOException ex) {
             throw new RuntimeException("Failed to load config for " + cfg.getModId(), ex);
         }
+
         registry.put(cfg.getModId(), cfg);
     }
 
@@ -45,6 +60,10 @@ public final class Serpentine {
         if (c == null) throw new IllegalStateException("No config registered for " + modId);
         if (!cls.isInstance(c)) throw new ClassCastException("Config for " + modId + " is not " + cls.getName());
         return (T) c;
+    }
+
+    public static Config getConfig(String modId) {
+        return registry.get(modId);
     }
 
     public static void save(Config config) throws IOException {

@@ -1,11 +1,16 @@
 package penguin.serpentine;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import penguin.serpentine.core.Config;
 import penguin.serpentine.core.example.ExampleConfig;
+import penguin.serpentine.network.ConfigNetworking;
+import penguin.serpentine.network.SerpentineServerTicker;
 
 public class Serpentine implements ModInitializer {
 	public static final String MOD_ID = "serpentine";
@@ -18,10 +23,27 @@ public class Serpentine implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		CONFIG = new ExampleConfig(MOD_ID);
-		// This code runs as soon as Minecraft is in a mod-load-ready state.
-		// However, some things (like resources) may still be uninitialized.
-		// Proceed with mild caution.
-		penguin.serpentine.core.Serpentine.register(CONFIG);
-		LOGGER.info("Hello Fabric world!");
+
+
+		SerpentineServerTicker.register();
+
+        ConfigNetworking.registerPayloadTypes();
+
+        ConfigNetworking.registerC2SHandlers();
+
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			ServerPlayerEntity player = handler.player;
+			Config cfg = penguin.serpentine.core.Serpentine.getConfig(MOD_ID);
+			// Send OP status to the client
+			ConfigNetworking.sendS2COpStatus(player, player.hasPermissionLevel(2));
+			ConfigNetworking.sendS2CSync(player, cfg, true);
+		});
+
+		// penguin.serpentine.core.Serpentine.register(CONFIG);
+		// if (penguin.serpentine.core.Serpentine.getConfig(MOD_ID) != null) {
+		// 	String message = penguin.serpentine.core.Serpentine.get(MOD_ID, ExampleConfig.class).snakeGreeting;
+		// 	LOGGER.info(message);    
+		// }
+		LOGGER.info("Serpentine Loaded Correctly.");
 	}
 }

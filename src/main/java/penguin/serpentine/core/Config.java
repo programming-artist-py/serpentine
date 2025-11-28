@@ -3,9 +3,12 @@ package penguin.serpentine.core;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+
+import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
  * Minimal base config class for Serpentine.
@@ -17,10 +20,20 @@ public abstract class Config {
     private Path filePath;
 
     // Expected keys and defaults
-    private final Map<String, Object> expectedDefaults = new LinkedHashMap<>();
+    protected final Map<String, Object> expectedDefaults = new LinkedHashMap<>();
 
     // Current runtime values
-    private final Map<String, Object> values = new LinkedHashMap<>();
+    protected final Map<String, Object> values = new LinkedHashMap<>();
+
+    protected Map<String, SyncSide> syncSide = new HashMap<>();
+
+    private final Map<String, Object> serverValues = new LinkedHashMap<>();
+
+    public enum SyncSide {
+        SERVER_ONLY,
+        CLIENT_ONLY,
+        SYNCED
+    }
 
     public Config(String modId) {
         this.modId = modId;
@@ -28,10 +41,21 @@ public abstract class Config {
     }
 
     /** Called by Serpentine during registration to set the config file path */
-    void bindPath(Path configDir) {
-        this.filePath = configDir.resolve(modId + ".scnf");
-        loadFromFile(); // load values from file (if it exists)
+    void bindPath(Path configDir, boolean isServer) {
+        if (isServer) {
+            Path serverDir = configDir.resolve("server");
+            try {
+                Files.createDirectories(serverDir);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            this.filePath = serverDir.resolve(modId + ".scnf");
+        } else {
+            this.filePath = configDir.resolve(modId + ".scnf");
+        }
+        loadFromFile();
     }
+
 
     /** Get the config file path */
     public Path getFilePath() {
@@ -43,9 +67,9 @@ public abstract class Config {
     }
 
     /** Declare an expected key and default value */
-    protected void expect(String key, Object defaultValue) {
+    public void expect(String key, Object defaultValue, SyncSide side) {
         expectedDefaults.put(key, defaultValue);
-        // Do not set the value yet — loading will override if file exists
+        syncSide.put(key, side);
     }
 
     /** Get all expected keys and their defaults */
@@ -78,6 +102,68 @@ public abstract class Config {
     /** Get a copy of all current key->value pairs */
     public Map<String, Object> getValues() {
         return new LinkedHashMap<>(values);
+    }
+
+    public Map<String, String> getServerSyncableValues() {
+        Map<String, String> out = new HashMap<>();
+        for (var entry : values.entrySet()) {
+            String key = entry.getKey();
+            if (syncSide.get(key) == SyncSide.SYNCED) {
+                out.put(key, entry.getValue().toString());
+            }
+        }
+        return out;
+    }
+
+    public Map<String, String> getServerOnlyValues() {
+        Map<String, String> out = new HashMap<>();
+        for (var entry : values.entrySet()) {
+            String key = entry.getKey();
+            if (syncSide.get(key) == SyncSide.SERVER_ONLY) {
+                out.put(key, entry.getValue().toString());
+            }
+        }
+        return out;
+    }
+
+
+    public SyncSide getSyncSide(String key) {
+        return syncSide.getOrDefault(key, SyncSide.CLIENT_ONLY);
+    }
+
+    public Map<String, Object> getServerValues() {
+        return serverValues;
+    }
+
+    /** Called on client when server sends a full config sync */
+    public void applyServerSync(Map<String, String> syncedValues) {
+        serverValues.clear();
+        for (var entry : syncedValues.entrySet()) {
+            String key = entry.getKey();
+            String valueStr = entry.getValue();
+
+            Object defaultVal = expectedDefaults.get(key);
+            Object parsedVal;
+
+            if (defaultVal instanceof Boolean) parsedVal = Boolean.parseBoolean(valueStr);
+            else if (defaultVal instanceof Integer) parsedVal = Integer.parseInt(valueStr);
+            else if (defaultVal instanceof Float) parsedVal = Float.parseFloat(valueStr);
+            else parsedVal = valueStr;
+
+            serverValues.put(key, parsedVal);
+        }
+    }
+
+    public abstract void applyServerEdit(ServerPlayerEntity player, String key, String valueStr);
+
+
+    public Map<String, String> getValuesAsStrings() {
+        Map<String, String> out = new HashMap<>();
+        for (var entry : values.entrySet()) {
+            Object v = entry.getValue();
+            out.put(entry.getKey(), v == null ? "" : v.toString());
+        }
+        return out;
     }
 
     /** Load config values from .scnf, fallback to defaults */

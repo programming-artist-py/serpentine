@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import net.minecraft.server.network.ServerPlayerEntity;
 import penguin.serpentine.core.Config;
 
 public class ExampleConfig extends Config {
@@ -28,18 +29,18 @@ public class ExampleConfig extends Config {
 
     @Override
     public void expected() {
-        this.expect("npc_jumppower",        5.0F);
-        this.expect("enable_snakes",        true);
-        this.expect("max_snake_count",      12);
-        this.expect("snakeGreeting",        "sssalutations");
+        this.expect("npc_jumppower", 5.0F, SyncSide.SERVER_ONLY);
+        this.expect("enable_snakes", true, SyncSide.SERVER_ONLY);
+        this.expect("max_snake_count", 12, SyncSide.SERVER_ONLY);
+        this.expect("snakeGreeting", "sssalutations", SyncSide.CLIENT_ONLY);
 
         // Add 6 more
-        this.expect("snake_speed",          1.25F);
-        this.expect("snake_aggression",     0.75F);
-        this.expect("allow_venom",          true);
-        this.expect("venom_damage",         4);
-        this.expect("world_snake_cap",      64);
-        this.expect("snake_greeting_style", "hiss");
+        this.expect("snake_speed", 1.25F, SyncSide.SERVER_ONLY);
+        this.expect("snake_aggression", 0.75F, SyncSide.SERVER_ONLY);
+        this.expect("allow_venom", true, SyncSide.SERVER_ONLY);
+        this.expect("venom_damage", 4, SyncSide.SERVER_ONLY);
+        this.expect("world_snake_cap", 64, SyncSide.SERVER_ONLY);
+        this.expect("snake_greeting_style", "hiss", SyncSide.CLIENT_ONLY);
     }
 
     @Override
@@ -107,5 +108,45 @@ public class ExampleConfig extends Config {
         if (snake_aggression < 0.0F)  snake_aggression = 0.0F;
         if (venom_damage < 0)         venom_damage = 0;
         if (world_snake_cap < 0)      world_snake_cap = 0;
+    }
+
+    public void applyServerEdit(ServerPlayerEntity player, String key, String valueStr) {
+        SyncSide side = syncSide.get(key);
+        if (!expectedDefaults.containsKey(key)) {
+            throw new IllegalArgumentException("Unknown config key: " + key);
+        }
+        if (side == SyncSide.CLIENT_ONLY) {
+            throw new IllegalArgumentException("Client-only config cannot be changed by server: " + key);
+        }
+
+        Object defaultVal = expectedDefaults.get(key);
+        Object parsedVal;
+
+        try {
+            if (defaultVal instanceof Boolean) {
+                parsedVal = Boolean.parseBoolean(valueStr);
+            } else if (defaultVal instanceof Integer) {
+                parsedVal = Integer.parseInt(valueStr);
+            } else if (defaultVal instanceof Float) {
+                parsedVal = Float.parseFloat(valueStr);
+            } else if (defaultVal instanceof Double) {
+                parsedVal = Double.parseDouble(valueStr);
+            } else {
+                parsedVal = valueStr;
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to parse value for " + key + ": " + valueStr, e);
+        }
+
+        values.put(key, parsedVal);
+        save();
+
+        // --- Broadcast the new config to all players ---
+        var server = player.getServer();
+        if (server != null) {
+            for (ServerPlayerEntity target : server.getPlayerManager().getPlayerList()) {
+                penguin.serpentine.network.ConfigNetworking.sendS2CSync(target, this, false);
+            }
+        }
     }
 }

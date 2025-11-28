@@ -7,6 +7,8 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 import penguin.serpentine.core.Config;
+import penguin.serpentine.core.Config.SyncSide;
+import penguin.serpentine.network.ConfigNetworkingClient;
 import penguin.serpentine.screens.widgets.ConfigListWidget;
 
 import java.util.LinkedHashMap;
@@ -21,11 +23,43 @@ public class ConfigScreen extends Screen {
 
     private ConfigListWidget list;
 
-    
     public ConfigScreen(Screen parent, Config config) {
         super(Text.literal("Config: " + config.getModId()));
         this.parent = parent;
         this.config = config;
+    }
+
+    private Object parseValueFromString(String str, Object defaultVal) {
+        if (defaultVal instanceof Boolean) return Boolean.parseBoolean(str);
+        if (defaultVal instanceof Integer) return Integer.parseInt(str);
+        if (defaultVal instanceof Float) return Float.parseFloat(str);
+        if (defaultVal instanceof Double) return Double.parseDouble(str);
+        return str; // fallback to string
+    }
+
+    public Map<String, Object> getDisplayValues() {
+        Map<String, Object> display = new LinkedHashMap<>();
+        Map<String, String> serverVals = ConfigNetworkingClient.serverConfigCache
+            .getOrDefault(config.getModId(), Map.of());
+
+
+        for (var entry : config.getValues().entrySet()) {
+            String key = entry.getKey();
+            SyncSide side = config.getSyncSide(key);
+
+            if (side == Config.SyncSide.SERVER_ONLY || side == SyncSide.SYNCED) {
+                if (serverVals.containsKey(key)) {
+                    Object val = parseValueFromString(serverVals.get(key), entry.getValue());
+                    display.put(key, val);
+                } else {
+                    display.put(key, entry.getValue());
+                }
+            } else { // CLIENT_ONLY
+                display.put(key, entry.getValue());
+            }
+        }
+
+        return display;
     }
 
     @Override
@@ -50,12 +84,15 @@ public class ConfigScreen extends Screen {
             rowHeight            // Item height
         );
         // Build entries (exact behavior, just inside rows)
-        for (Map.Entry<String, Object> entry : config.getValues().entrySet()) {
+        Map<String, Object> displayValues = getDisplayValues();
+
+        for (Map.Entry<String, Object> entry : displayValues.entrySet()) {
             list.addConfigEntry(
                 new ConfigListWidget.ConfigEntry(
                     this,
                     entry.getKey(),
                     entry.getValue(),
+                    config,
                     textRenderer
                 )
             );
@@ -66,19 +103,42 @@ public class ConfigScreen extends Screen {
         // Apply button (does not close screen)
         addDrawableChild(
             ButtonWidget.builder(Text.literal("Apply"), btn -> {
-                config.updateValues(pendingEdits);
+                for (var entry : pendingEdits.entrySet()) {
+                    String key = entry.getKey();
+                    Object newValue = entry.getValue();
 
-                // Refresh boolean highlights
+                    switch (config.getSyncSide(key)) {
+                        case SyncSide.SERVER_ONLY -> {
+                            // Send edit to server
+                            penguin.serpentine.network.ConfigNetworkingClient.sendC2SRequest(
+                                    config.getModId(),
+                                    key,
+                                    newValue.toString()
+                            );
+                        }
+                        case SyncSide.CLIENT_ONLY -> {
+                            // Apply locally
+                            config.updateValues(Map.of(key, newValue));
+                        }
+                        case SyncSide.SYNCED -> {
+                            // Do nothing, read-only
+                        }
+                    }
+                }
+
+                // Refresh boolean highlights in the list
                 for (var e : list.children()) {
                     if (e instanceof ConfigListWidget.ConfigEntry ce
                             && config.getValues().get(ce.key) instanceof Boolean b) {
-
                         ce.updateBooleanHighlight(b);
                     }
                 }
+
+                pendingEdits.clear();
                 MinecraftClient.getInstance().setScreen(parent);
             }).dimensions(10, height - 30, 60, 20).build()
         );
+
 
         // Cancel button (closes)
         addDrawableChild(

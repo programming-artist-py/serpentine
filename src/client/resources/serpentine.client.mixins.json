@@ -3,7 +3,8 @@
 	"package": "penguin.serpentine.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ExampleClientMixin"
+		"ExampleClientMixin",
+		"ConfigItemHeight"
 	],
 	"injectors": {
 		"defaultRequire": 1

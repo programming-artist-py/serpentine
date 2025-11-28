@@ -9,9 +9,8 @@ import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
-import penguin.serpentine.core.Config;
-import penguin.serpentine.core.Serpentine;
-import penguin.serpentine.screens.ConfigScreen;
+import penguin.serpentine.network.ConfigNetworkingClient;
+import penguin.serpentine.screens.ConfigRootScreen;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +21,9 @@ public class SerpentineClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+
+        ConfigNetworkingClient.registerS2C();
+
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof OptionsScreen) {
                 List<ClickableWidget> buttons = Screens.getButtons(screen);
@@ -61,9 +63,7 @@ public class SerpentineClient implements ClientModInitializer {
     
     /** Open a selection screen for all registered configs */
     private void openConfigSelectionScreen(Screen parent) {
-        for (Config config : Serpentine.getAllConfigs()) {
-            MinecraftClient.getInstance().setScreen(new ConfigScreen(parent, config));
-            break;
-        }
+        MinecraftClient.getInstance().setScreen(new ConfigRootScreen(parent));
     }
+
 }
