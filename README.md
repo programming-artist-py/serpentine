@@ -12,9 +12,11 @@ if it is a boolean it'll make two buttons for True and False, the currently sele
 
 # Current limitations
 
-### one config at a time
+### ~~one config at a time~~
 
-Only one mod can use Serpentine at a time (1.7.0)
+~~Only one mod can use Serpentine at a time (1.7.0)~~
+
+As of 2.0.0, multiple configs are supported
 
 ### Integer slider limited boundaries in Config screen
 
