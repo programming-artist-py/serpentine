@@ -1,5 +1,7 @@
 ![fabric](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/fabric_vector.svg)
 
+[![modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/serpentine)
+
 # Serpentine
 
 Serpentine is a lightweight configuration library mod that can easily be used in other projects.
