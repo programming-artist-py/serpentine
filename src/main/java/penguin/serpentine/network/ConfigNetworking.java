@@ -13,24 +13,25 @@ import penguin.serpentine.core.Serpentine;
 public class ConfigNetworking {
 
     public static final Identifier S2C_OP_STATUS = Identifier.of("serpentine", "s2c_op_status");
-
+    private static boolean payloadsRegistered = false;
+    
     public static void registerPayloadTypes() {
+        if (payloadsRegistered) return;
+        payloadsRegistered = true;
 
-        // Client -> Server
         PayloadTypeRegistry.playC2S().register(
                 C2SRequestConfigChangePayload.ID,
                 C2SRequestConfigChangePayload.CODEC
         );
 
-        // Server -> Client
         PayloadTypeRegistry.playS2C().register(
                 S2CSyncConfigPayload.ID,
                 S2CSyncConfigPayload.CODEC
         );
 
         PayloadTypeRegistry.playS2C().register(
-            S2COpStatusPayload.ID,
-            S2COpStatusPayload.CODEC
+                S2COpStatusPayload.ID,
+                S2COpStatusPayload.CODEC
         );
     }
 
